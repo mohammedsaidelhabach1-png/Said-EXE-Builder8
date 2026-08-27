@@ -35,7 +35,7 @@ jobs:
   build-apk:
     name: Build release APK on cloud runner
     runs-on: ubuntu-24.04
-    timeout-minutes: 45
+    timeout-minutes: 90
 
     steps:
       - name: Checkout project
@@ -82,8 +82,7 @@ jobs:
             --build-cache \
             --configuration-cache \
             --console=plain \
-            --stacktrace \
-            --info
+            --warning-mode=summary
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
