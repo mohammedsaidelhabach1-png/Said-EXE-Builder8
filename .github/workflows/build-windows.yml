@@ -30,8 +30,8 @@ jobs:
       - name: Build EXE
         shell: pwsh
         run: |
-          $script = Get-ChildItem -Filter *.py | Select-Object -First 1
-          if (-not $script) { throw "لم يتم العثور على ملف Python في المستودع" }
+          $script = Get-Item build_input.py -ErrorAction SilentlyContinue
+          if (-not $script) { throw "لم يتم العثور على ملف Python المرفوع من التطبيق" }
           pyinstaller --noconfirm --clean --onefile --windowed --name SaidEXE $script.FullName
       - name: Upload EXE artifact
         uses: actions/upload-artifact@v4
