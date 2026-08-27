@@ -1,0 +1,42 @@
+name: Build Python EXE
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - "*.py"
+      - "requirements.txt"
+      - ".github/workflows/build-windows.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - name: Install dependencies
+        shell: pwsh
+        run: |
+          python -m pip install --upgrade pip
+          if (Test-Path requirements.txt) { pip install -r requirements.txt }
+          pip install pyinstaller
+      - name: Build EXE
+        shell: pwsh
+        run: |
+          $script = Get-ChildItem -Filter *.py | Select-Object -First 1
+          if (-not $script) { throw "لم يتم العثور على ملف Python في المستودع" }
+          pyinstaller --noconfirm --clean --onefile --windowed --name SaidEXE $script.FullName
+      - name: Upload EXE artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SaidEXE-windows
+          path: dist/SaidEXE.exe
+          if-no-files-found: error
+          retention-days: 7
