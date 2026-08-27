@@ -1,0 +1,106 @@
+name: Build Said EXE APK in Cloud
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths:
+      - 'app/**'
+      - 'components/**'
+      - 'lib/**'
+      - 'hooks/**'
+      - 'assets/**'
+      - 'app.config.ts'
+      - 'package.json'
+      - 'pnpm-lock.yaml'
+      - '.github/workflows/build-apk-cloud.yml'
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+  GRADLE_OPTS: >-
+    -Dorg.gradle.daemon=false
+    -Dorg.gradle.parallel=false
+    -Dorg.gradle.workers.max=2
+    -Dorg.gradle.caching=true
+    -Dkotlin.incremental=true
+    -Xmx4g
+    -XX:MaxMetaspaceSize=768m
+    -XX:+HeapDumpOnOutOfMemoryError
+  JAVA_TOOL_OPTIONS: '-XX:ActiveProcessorCount=2'
+
+jobs:
+  build-apk:
+    name: Build release APK on cloud runner
+    runs-on: ubuntu-24.04
+    timeout-minutes: 45
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9.12.0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Setup Java JDK
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      - name: Install JavaScript dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Generate Android project
+        run: npx expo prebuild --platform android --non-interactive
+
+      - name: Configure Android SDK path
+        working-directory: android
+        run: printf 'sdk.dir=%s\n' "$ANDROID_SDK_ROOT" > local.properties
+
+      - name: Build release APK
+        working-directory: android
+        run: |
+          chmod +x gradlew
+          ./gradlew assembleRelease \
+            --no-daemon \
+            --max-workers=2 \
+            --build-cache \
+            --configuration-cache \
+            --console=plain \
+            --stacktrace \
+            --info
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: SaidEXE-release-apk
+          path: android/app/build/outputs/apk/release/*.apk
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload build diagnostics on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: SaidEXE-build-diagnostics
+          path: |
+            android/**/*.log
+            android/**/build/reports/**
+            android/**/build/outputs/logs/**
+          if-no-files-found: ignore
+          retention-days: 7
