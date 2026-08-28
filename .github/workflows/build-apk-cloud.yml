@@ -18,6 +18,11 @@ on:
 permissions:
   contents: read
 
+# يمنع تشغيل بناء أحدث من إلغاء بناء سابق تلقائياً.
+concurrency:
+  group: said-exe-apk-build
+  cancel-in-progress: false
+
 env:
   CI: true
   GRADLE_OPTS: >-
@@ -26,8 +31,8 @@ env:
     -Dorg.gradle.workers.max=2
     -Dorg.gradle.caching=true
     -Dkotlin.incremental=true
-    -Xmx4g
-    -XX:MaxMetaspaceSize=768m
+    -Xmx5g
+    -XX:MaxMetaspaceSize=1024m
     -XX:+HeapDumpOnOutOfMemoryError
   JAVA_TOOL_OPTIONS: '-XX:ActiveProcessorCount=2'
 
@@ -35,7 +40,7 @@ jobs:
   build-apk:
     name: Build release APK on cloud runner
     runs-on: ubuntu-24.04
-    timeout-minutes: 90
+    timeout-minutes: 150
 
     steps:
       - name: Checkout project
@@ -82,7 +87,8 @@ jobs:
             --build-cache \
             --configuration-cache \
             --console=plain \
-            --warning-mode=summary
+            --warning-mode=summary \
+            --no-scan
 
       - name: Upload APK artifact
         uses: actions/upload-artifact@v4
